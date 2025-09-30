@@ -1,0 +1,432 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>📊 Offline Statistics Games (Working)</title>
+<style>
+  body { 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    text-align: center; 
+    margin: 20px; 
+    background-color: #f8f9fa;
+    color: #333;
+  }
+  h1, h2 { 
+    color: #0056b3;
+  }
+  #menu { 
+    margin: 20px; 
+  }
+  #menu button { 
+    margin: 5px; 
+    padding: 10px 20px; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    border: 1px solid #0056b3; 
+    background: #ffffff; 
+    font-size: 16px;
+    transition: background-color 0.2s;
+  }
+  #menu button:hover { 
+    background: #e9ecef; 
+  }
+  .game { 
+    display: none; 
+    margin-top: 20px; 
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #fff;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .game button { 
+    margin: 5px; 
+    padding: 8px 15px; 
+    cursor: pointer; 
+    border-radius: 5px;
+    border: 1px solid #28a745;
+    background-color: #28a745;
+    color: white;
+    font-size: 14px;
+  }
+  .new-challenge-btn {
+      background-color: #007bff;
+      border-color: #007bff;
+      margin-top:10px;
+  }
+  .choice-btn {
+    background-color: #6c757d;
+    border-color: #6c757d;
+  }
+  canvas { 
+    border: 1px solid #dee2e6; 
+    margin: 15px auto; 
+    display: block;
+  }
+  #feedback, #feedback-spread, #feedback-correlation, #feedback-ct { 
+    font-size: 18px; 
+    font-weight: bold; 
+    margin-top: 15px; 
+    min-height: 50px; 
+    padding: 10px;
+    border-radius: 5px;
+  }
+  #correlation-slider { 
+    width: 70%; 
+    max-width: 400px;
+  }
+</style>
+</head>
+<body>
+
+<h1>📊 Offline Statistics Games</h1>
+<p>Select a game to play. No internet required!</p>
+
+<div id="menu">
+  <button onclick="showGame('covariance')">Covariance Game</button>
+  <button onclick="showGame('centralTendency')">Central Tendency Game</button>
+  <button onclick="showGame('spread')">Guess the Spread Game</button>
+  <button onclick="showGame('correlation')">Guess the Correlation</button>
+</div>
+
+<div id="covariance" class="game">
+  <h2>📈 Covariance: Identify the Trend</h2>
+  <p>Look at the scatterplot. What is the trend of the data?</p>
+  <canvas id="covCanvas" width="500" height="350"></canvas>
+  <div>
+    <button onclick="checkCovarianceAnswer('positive')">Positive Trend</button>
+    <button onclick="checkCovarianceAnswer('negative')">Negative Trend</button>
+    <button onclick="checkCovarianceAnswer('none')">No Trend</button>
+  </div>
+  <button onclick="newCovarianceGame()" class="new-challenge-btn">New Challenge</button>
+  <p id="feedback"></p>
+</div>
+
+<div id="centralTendency" class="game">
+  <h2 id="ct-heading"></h2>
+  <p id="ct-instructions"></p>
+  <canvas id="ctCanvas" width="500" height="350"></canvas>
+  <p><b>Choose your challenge:</b></p>
+  <div>
+    <button onclick="setCentralTendencyChallenge('mean')" class="choice-btn">Find Mean</button>
+    <button onclick="setCentralTendencyChallenge('median')" class="choice-btn">Find Median</button>
+    <button onclick="setCentralTendencyChallenge('mode')" class="choice-btn">Find Mode</button>
+  </div>
+  <button onclick="startCentralTendencyGame()" class="new-challenge-btn">New Data Set</button>
+  <p id="feedback-ct"></p>
+</div>
+
+<div id="spread" class="game">
+  <h2>↔️ Guess the Spread Game</h2>
+  <p>Which dataset has the larger spread (standard deviation)?</p>
+  <canvas id="spreadCanvas" width="500" height="350"></canvas>
+  <div>
+    <button onclick="checkSpreadAnswer('A')">Dataset A (Blue)</button>
+    <button onclick="checkSpreadAnswer('B')">Dataset B (Orange)</button>
+  </div>
+  <button onclick="newSpreadGame()" class="new-challenge-btn">New Challenge</button>
+  <p id="feedback-spread"></p>
+</div>
+
+<div id="correlation" class="game">
+  <h2>🤔 Guess the Correlation Game</h2>
+  <p>Use the slider to guess the correlation coefficient (r).</p>
+  <canvas id="corrCanvas" width="500" height="350"></canvas>
+  <div>
+    <input type="range" id="correlation-slider" min="-1" max="1" step="0.01" value="0" oninput="updateSliderValue()">
+    <p>Your Guess: <b id="slider-value">0.00</b></p>
+    <button onclick="checkCorrelationGuess()">Submit Guess</button>
+  </div>
+  <button onclick="newCorrelationGame()" class="new-challenge-btn">New Plot</button>
+  <p id="feedback-correlation"></p>
+</div>
+
+<script>
+  // --- UTILITY AND SETUP ---
+  function showGame(gameId) {
+    document.querySelectorAll('.game').forEach(g => g.style.display = 'none');
+    const gameElement = document.getElementById(gameId);
+    gameElement.style.display = 'block';
+    if (!gameElement.dataset.initialized) {
+        if (gameId === 'covariance') newCovarianceGame();
+        if (gameId === 'centralTendency') startCentralTendencyGame();
+        if (gameId === 'spread') newSpreadGame();
+        if (gameId === 'correlation') newCorrelationGame();
+        gameElement.dataset.initialized = 'true';
+    }
+  }
+
+  function drawAxes(ctx, canvas) {
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(40, canvas.height - 40);
+      ctx.lineTo(canvas.width - 20, canvas.height - 40); // X-axis
+      ctx.moveTo(40, canvas.height - 40);
+      ctx.lineTo(40, 20); // Y-axis
+      ctx.stroke();
+  }
+  
+  function setFeedback(element, message, isCorrect) {
+      element.innerHTML = message;
+      element.style.backgroundColor = isCorrect ? '#d4edda' : '#f8d7da';
+      element.style.color = isCorrect ? '#155724' : '#721c24';
+  }
+
+  // --- COVARIANCE GAME ---
+  let covarianceCorrectAnswer = '';
+  const covCanvas = document.getElementById('covCanvas');
+  const covCtx = covCanvas.getContext('2d');
+
+  function newCovarianceGame() {
+    const types = ['positive', 'negative', 'none'];
+    covarianceCorrectAnswer = types[Math.floor(Math.random() * types.length)];
+    const n = 80;
+    let xData = Array.from({ length: n }, () => Math.random() * 10);
+    let yData = [];
+    if (covarianceCorrectAnswer === 'positive') {
+      yData = xData.map(val => val + (Math.random() - 0.5) * 5);
+    } else if (covarianceCorrectAnswer === 'negative') {
+      yData = xData.map(val => 10 - val + (Math.random() - 0.5) * 5);
+    } else {
+      yData = Array.from({ length: n }, () => Math.random() * 10);
+    }
+    drawScatter(covCtx, covCanvas, xData, yData, 'royalblue');
+    document.getElementById('feedback').innerHTML = '';
+    document.getElementById('feedback').style.backgroundColor = 'transparent';
+  }
+
+  function drawScatter(ctx, canvas, x, y, color) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawAxes(ctx, canvas);
+    const xRange = Math.max(...x) - Math.min(...x) || 1;
+    const yRange = Math.max(...y) - Math.min(...y) || 1;
+    const xMin = Math.min(...x);
+    const yMin = Math.min(...y);
+    
+    ctx.fillStyle = color;
+    for (let i = 0; i < x.length; i++) {
+        const px = 40 + ((x[i] - xMin) / xRange) * (canvas.width - 70);
+        const py = (canvas.height - 40) - ((y[i] - yMin) / yRange) * (canvas.height - 70);
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+  }
+  
+  function checkCovarianceAnswer(choice) {
+    const feedbackEl = document.getElementById('feedback');
+    const isCorrect = choice === covarianceCorrectAnswer;
+    const message = isCorrect
+      ? `✅ Correct! The trend is <b>${covarianceCorrectAnswer}</b>.`
+      : `❌ Not quite. The actual trend is <b>${covarianceCorrectAnswer}</b>.`;
+    setFeedback(feedbackEl, message, isCorrect);
+  }
+
+  // --- CENTRAL TENDENCY GAME (UPDATED) ---
+  let ctValues, actualMean, actualMedian, actualMode, ctChallenge;
+  const ctCanvas = document.getElementById('ctCanvas');
+  const ctCtx = ctCanvas.getContext('2d');
+  
+  function startCentralTendencyGame() {
+    const pool = [10, 20, 30, 40, 50, 60, 70, 80];
+    ctValues = Array.from({ length: 9 }, () => pool[Math.floor(Math.random() * pool.length)]);
+    actualMean = ctValues.reduce((a, b) => a + b, 0) / ctValues.length;
+    const sorted = [...ctValues].sort((a, b) => a - b);
+    actualMedian = sorted[Math.floor(sorted.length / 2)];
+    
+    const freqs = ctValues.reduce((acc, val) => { acc[val] = (acc[val] || 0) + 1; return acc; }, {});
+    actualMode = Number(Object.keys(freqs).reduce((a, b) => freqs[a] > freqs[b] ? a : b));
+
+    drawBarChart(ctCtx, ctCanvas, ctValues, 'mediumpurple');
+    document.getElementById('feedback-ct').innerHTML = '';
+    document.getElementById('feedback-ct').style.backgroundColor = 'transparent';
+    // Set a default challenge when new data is loaded
+    setCentralTendencyChallenge('mean'); 
+  }
+
+  function setCentralTendencyChallenge(challenge) {
+    ctChallenge = challenge;
+    const challengeName = challenge.charAt(0).toUpperCase() + challenge.slice(1);
+    document.getElementById('ct-heading').innerText = `🎯 Find the ${challengeName}`;
+    document.getElementById('ct-instructions').innerHTML = (ctChallenge === 'mode') 
+        ? "Click on the bar that represents the <b>mode</b>."
+        : `Click on the canvas at the height you think the <b>${ctChallenge}</b> is.`;
+  }
+
+  function drawBarChart(ctx, canvas, values, color) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawAxes(ctx, canvas);
+    const barWidth = (canvas.width - 80) / values.length * 0.8;
+    const barSpacing = (canvas.width - 80) / values.length * 0.2;
+    const maxValue = 80; // Use a fixed max value for consistent axis
+    
+    // Draw Y-axis labels
+    ctx.fillStyle = '#666';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= maxValue; i += 20) {
+        const yPos = (canvas.height - 40) - (i / maxValue) * (canvas.height - 60);
+        ctx.fillText(i, 35, yPos + 4);
+    }
+    
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    
+    values.forEach((v, i) => {
+      const barHeight = (v / maxValue) * (canvas.height - 60);
+      const x = 50 + i * (barWidth + barSpacing);
+      const y = canvas.height - 40 - barHeight;
+      ctx.fillRect(x, y, barWidth, barHeight);
+      ctx.fillStyle = '#000';
+      ctx.fillText(String.fromCharCode(65 + i), x + barWidth / 2, canvas.height - 25);
+      ctx.fillStyle = color;
+    });
+  }
+
+  ctCanvas.addEventListener('click', function(evt) {
+    if (!ctChallenge) return; // Don't do anything if no challenge is set
+
+    const rect = ctCanvas.getBoundingClientRect();
+    const feedbackEl = document.getElementById('feedback-ct');
+    let message = '';
+    let isCorrect = false;
+
+    if (ctChallenge === 'mode') {
+      const x = evt.clientX - rect.left;
+      const barTotalWidth = (ctCanvas.width - 80) / ctValues.length;
+      const clickedIndex = Math.floor((x - 50) / barTotalWidth);
+      if (clickedIndex >= 0 && clickedIndex < ctValues.length) {
+        const clickedValue = ctValues[clickedIndex];
+        isCorrect = clickedValue === actualMode;
+        message = isCorrect
+          ? `✅ Correct! The mode is ${actualMode}.`
+          : `❌ Not quite. You clicked on a bar with value ${clickedValue}. The mode is ${actualMode}.`;
+      }
+    } else {
+      const y = evt.clientY - rect.top;
+      const maxValue = 80;
+      const guessedValue = ((ctCanvas.height - 40 - y) / (ctCanvas.height - 60)) * maxValue;
+      const targetValue = ctChallenge === 'mean' ? actualMean : actualMedian;
+      isCorrect = Math.abs(guessedValue - targetValue) < 5; // 5 is the tolerance
+      message = isCorrect 
+        ? `✅ Excellent guess! Your guess of ${guessedValue.toFixed(1)} was very close to the actual ${ctChallenge} of ${targetValue.toFixed(1)}.`
+        : `❌ Your guess was ${guessedValue.toFixed(1)}. The actual ${ctChallenge} is ${targetValue.toFixed(1)}.`;
+    }
+    setFeedback(feedbackEl, message, isCorrect);
+  });
+  
+  // --- SPREAD GAME ---
+  let spreadCorrectAnswer = '';
+  const spreadCanvas = document.getElementById('spreadCanvas');
+  const spreadCtx = spreadCanvas.getContext('2d');
+
+  function newSpreadGame() {
+    const mean = 50;
+    const smallSpread = 5;
+    const largeSpread = 15;
+    let dataSmall = [-2 * smallSpread, -smallSpread, 0, smallSpread, 2 * smallSpread].map(v => v + mean);
+    let dataLarge = [-2 * largeSpread, -largeSpread, 0, largeSpread, 2 * largeSpread].map(v => v + mean);
+    let dataA, dataB;
+
+    if (Math.random() > 0.5) {
+      dataA = dataSmall; dataB = dataLarge; spreadCorrectAnswer = 'B';
+    } else {
+      dataA = dataLarge; dataB = dataSmall; spreadCorrectAnswer = 'A';
+    }
+    
+    drawDotPlots(spreadCtx, spreadCanvas, dataA, dataB);
+    document.getElementById('feedback-spread').innerHTML = '';
+    document.getElementById('feedback-spread').style.backgroundColor = 'transparent';
+  }
+
+  function drawDotPlots(ctx, canvas, dataA, dataB) {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      drawAxes(ctx, canvas);
+      const allData = [...dataA, ...dataB];
+      const dataMin = Math.min(...allData);
+      const dataRange = Math.max(...allData) - dataMin || 1;
+      
+      ctx.fillStyle = 'blue';
+      ctx.font = '14px Arial';
+      ctx.fillText('Dataset A', canvas.width * 0.25, 30);
+      dataA.forEach(val => {
+          const py = (canvas.height - 50) - ((val - dataMin) / dataRange) * (canvas.height - 80);
+          ctx.beginPath();
+          ctx.arc(canvas.width * 0.25, py, 5, 0, 2*Math.PI);
+          ctx.fill();
+      });
+      
+      ctx.fillStyle = 'orange';
+      ctx.fillText('Dataset B', canvas.width * 0.75, 30);
+      dataB.forEach(val => {
+          const py = (canvas.height - 50) - ((val - dataMin) / dataRange) * (canvas.height - 80);
+          ctx.beginPath();
+          ctx.arc(canvas.width * 0.75, py, 5, 0, 2*Math.PI);
+          ctx.fill();
+      });
+  }
+
+  function checkSpreadAnswer(choice) {
+    const feedbackEl = document.getElementById('feedback-spread');
+    const isCorrect = choice === spreadCorrectAnswer;
+    const message = isCorrect
+      ? "✅ Correct! That dataset's points are further from the center."
+      : "❌ Not quite. The other dataset has points that are more spread out.";
+    setFeedback(feedbackEl, message, isCorrect);
+  }
+
+  // --- CORRELATION GAME ---
+  let actual_r = 0;
+  const corrCanvas = document.getElementById('corrCanvas');
+  const corrCtx = corrCanvas.getContext('2d');
+
+  function newCorrelationGame() {
+    const r_values = [-0.95, -0.7, -0.4, 0, 0.4, 0.7, 0.95];
+    actual_r = r_values[Math.floor(Math.random() * r_values.length)];
+    const n = 100;
+    let x = [];
+    let noise = [];
+    for (let i = 0; i < n; i++) {
+        x.push(Math.random());
+        noise.push(Math.random());
+    }
+    const y = x.map((val, i) => actual_r * val + Math.sqrt(1 - actual_r ** 2) * noise[i]);
+    
+    drawScatter(corrCtx, corrCanvas, x, y, 'darkgreen');
+    document.getElementById('feedback-correlation').innerHTML = '';
+    document.getElementById('feedback-correlation').style.backgroundColor = 'transparent';
+  }
+
+  function updateSliderValue() {
+    document.getElementById('slider-value').innerText = parseFloat(document.getElementById('correlation-slider').value).toFixed(2);
+  }
+
+  function checkCorrelationGuess() {
+    const userGuess = parseFloat(document.getElementById('correlation-slider').value);
+    const feedbackEl = document.getElementById('feedback-correlation');
+    const difference = Math.abs(userGuess - actual_r);
+    let message = '';
+    let isCorrect = false;
+
+    if (difference < 0.1) {
+        message = `✅ Outstanding! Your guess of ${userGuess.toFixed(2)} is very close. The actual r-value was ${actual_r.toFixed(2)}.`;
+        isCorrect = true;
+    } else if (difference < 0.25) {
+        message = `👍 Good guess! You said ${userGuess.toFixed(2)}, the actual r-value was ${actual_r.toFixed(2)}.`;
+        isCorrect = true;
+    } else {
+        message = `❌ Not quite. You guessed ${userGuess.toFixed(2)}, but the actual r-value was ${actual_r.toFixed(2)}.`;
+    }
+    setFeedback(feedbackEl, message, isCorrect);
+  }
+  
+  // Set default game
+  showGame('covariance');
+
+</script>
+</body>
+</html>
