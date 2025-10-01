@@ -31,7 +31,7 @@
   #menu button:hover { 
     background: #e9ecef; 
   }
-  .game { 
+  .Simulator { 
     display: none; 
     margin-top: 20px; 
     padding: 20px;
@@ -42,7 +42,7 @@
     margin-left: auto;
     margin-right: auto;
   }
-  .game button { 
+  .Simulator button { 
     margin: 5px; 
     padding: 8px 15px; 
     cursor: pointer; 
@@ -83,16 +83,16 @@
 <body>
 
 <h1>📊 Offline Statistics Simulator</h1>
-<p>Select a game to play. No internet required!</p>
+<p>Select a Simulator to play. No internet required!</p>
 
 <div id="menu">
-  <button onclick="showGame('covariance')">Covariance Game</button>
-  <button onclick="showGame('centralTendency')">Central Tendency Game</button>
-  <button onclick="showGame('spread')">Guess the Spread Game</button>
-  <button onclick="showGame('correlation')">Guess the Correlation</button>
+  <button onclick="showSimulator('covariance')">Covariance Simulator</button>
+  <button onclick="showSimulator('centralTendency')">Central Tendency Simulator</button>
+  <button onclick="showSimulator('spread')">Guess the Spread Simulator</button>
+  <button onclick="showSimulator('correlation')">Guess the Correlation</button>
 </div>
 
-<div id="covariance" class="game">
+<div id="covariance" class="Simulator">
   <h2>📈 Covariance: Identify the Trend</h2>
   <p>Look at the scatterplot. What is the trend of the data?</p>
   <canvas id="covCanvas" width="500" height="350"></canvas>
@@ -101,11 +101,11 @@
     <button onclick="checkCovarianceAnswer('negative')">Negative Trend</button>
     <button onclick="checkCovarianceAnswer('none')">No Trend</button>
   </div>
-  <button onclick="newCovarianceGame()" class="new-challenge-btn">New Challenge</button>
+  <button onclick="newCovarianceSimulator()" class="new-challenge-btn">New Challenge</button>
   <p id="feedback"></p>
 </div>
 
-<div id="centralTendency" class="game">
+<div id="centralTendency" class="Simulator">
   <h2 id="ct-heading"></h2>
   <p id="ct-instructions"></p>
   <canvas id="ctCanvas" width="500" height="350"></canvas>
@@ -115,24 +115,24 @@
     <button onclick="setCentralTendencyChallenge('median')" class="choice-btn">Find Median</button>
     <button onclick="setCentralTendencyChallenge('mode')" class="choice-btn">Find Mode</button>
   </div>
-  <button onclick="startCentralTendencyGame()" class="new-challenge-btn">New Data Set</button>
+  <button onclick="startCentralTendencySimulator()" class="new-challenge-btn">New Data Set</button>
   <p id="feedback-ct"></p>
 </div>
 
-<div id="spread" class="game">
-  <h2>↔️ Guess the Spread Game</h2>
+<div id="spread" class="Simulator">
+  <h2>↔️ Guess the Spread Simulator</h2>
   <p>Which dataset has the larger spread (standard deviation)?</p>
   <canvas id="spreadCanvas" width="500" height="350"></canvas>
   <div>
     <button onclick="checkSpreadAnswer('A')">Dataset A (Blue)</button>
     <button onclick="checkSpreadAnswer('B')">Dataset B (Orange)</button>
   </div>
-  <button onclick="newSpreadGame()" class="new-challenge-btn">New Challenge</button>
+  <button onclick="newSpreadSimulator()" class="new-challenge-btn">New Challenge</button>
   <p id="feedback-spread"></p>
 </div>
 
-<div id="correlation" class="game">
-  <h2>🤔 Guess the Correlation Game</h2>
+<div id="correlation" class="Simulator">
+  <h2>🤔 Guess the Correlation Simulator</h2>
   <p>Use the slider to guess the correlation coefficient (r).</p>
   <canvas id="corrCanvas" width="500" height="350"></canvas>
   <div>
@@ -140,22 +140,22 @@
     <p>Your Guess: <b id="slider-value">0.00</b></p>
     <button onclick="checkCorrelationGuess()">Submit Guess</button>
   </div>
-  <button onclick="newCorrelationGame()" class="new-challenge-btn">New Plot</button>
+  <button onclick="newCorrelationSimulator()" class="new-challenge-btn">New Plot</button>
   <p id="feedback-correlation"></p>
 </div>
 
 <script>
   // --- UTILITY AND SETUP ---
-  function showGame(gameId) {
-    document.querySelectorAll('.game').forEach(g => g.style.display = 'none');
-    const gameElement = document.getElementById(gameId);
-    gameElement.style.display = 'block';
-    if (!gameElement.dataset.initialized) {
-        if (gameId === 'covariance') newCovarianceGame();
-        if (gameId === 'centralTendency') startCentralTendencyGame();
-        if (gameId === 'spread') newSpreadGame();
-        if (gameId === 'correlation') newCorrelationGame();
-        gameElement.dataset.initialized = 'true';
+  function showSimulator(SimulatorId) {
+    document.querySelectorAll('.Simulator').forEach(g => g.style.display = 'none');
+    const SimulatorElement = document.getElementById(SimulatorId);
+    SimulatorElement.style.display = 'block';
+    if (!SimulatorElement.dataset.initialized) {
+        if (SimulatorId === 'covariance') newCovarianceSimulator();
+        if (SimulatorId === 'centralTendency') startCentralTendencySimulator();
+        if (SimulatorId === 'spread') newSpreadSimulator();
+        if (SimulatorId === 'correlation') newCorrelationSimulator();
+        SimulatorElement.dataset.initialized = 'true';
     }
   }
 
@@ -176,12 +176,12 @@
       element.style.color = isCorrect ? '#155724' : '#721c24';
   }
 
-  // --- COVARIANCE GAME ---
+  // --- COVARIANCE Simulator ---
   let covarianceCorrectAnswer = '';
   const covCanvas = document.getElementById('covCanvas');
   const covCtx = covCanvas.getContext('2d');
 
-  function newCovarianceGame() {
+  function newCovarianceSimulator() {
     const types = ['positive', 'negative', 'none'];
     covarianceCorrectAnswer = types[Math.floor(Math.random() * types.length)];
     const n = 80;
@@ -226,12 +226,12 @@
     setFeedback(feedbackEl, message, isCorrect);
   }
 
-  // --- CENTRAL TENDENCY GAME (UPDATED) ---
+  // --- CENTRAL TENDENCY Simulator (UPDATED) ---
   let ctValues, actualMean, actualMedian, actualMode, ctChallenge;
   const ctCanvas = document.getElementById('ctCanvas');
   const ctCtx = ctCanvas.getContext('2d');
   
-  function startCentralTendencyGame() {
+  function startCentralTendencySimulator() {
     const pool = [10, 20, 30, 40, 50, 60, 70, 80];
     ctValues = Array.from({ length: 9 }, () => pool[Math.floor(Math.random() * pool.length)]);
     actualMean = ctValues.reduce((a, b) => a + b, 0) / ctValues.length;
@@ -319,12 +319,12 @@
     setFeedback(feedbackEl, message, isCorrect);
   });
   
-  // --- SPREAD GAME ---
+  // --- SPREAD Simulator ---
   let spreadCorrectAnswer = '';
   const spreadCanvas = document.getElementById('spreadCanvas');
   const spreadCtx = spreadCanvas.getContext('2d');
 
-  function newSpreadGame() {
+  function newSpreadSimulator() {
     const mean = 50;
     const smallSpread = 5;
     const largeSpread = 15;
@@ -379,12 +379,12 @@
     setFeedback(feedbackEl, message, isCorrect);
   }
 
-  // --- CORRELATION GAME ---
+  // --- CORRELATION Simulator ---
   let actual_r = 0;
   const corrCanvas = document.getElementById('corrCanvas');
   const corrCtx = corrCanvas.getContext('2d');
 
-  function newCorrelationGame() {
+  function newCorrelationSimulator() {
     const r_values = [-0.95, -0.7, -0.4, 0, 0.4, 0.7, 0.95];
     actual_r = r_values[Math.floor(Math.random() * r_values.length)];
     const n = 100;
@@ -424,10 +424,11 @@
     setFeedback(feedbackEl, message, isCorrect);
   }
   
-  // Set default game
-  showGame('covariance');
+  // Set default Simulator
+  showSimulator('covariance');
 
 </script>
 </body>
 </html>
+
 
